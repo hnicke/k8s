@@ -22,12 +22,19 @@ spec:
         - name: init-database
           image: {{ .Values.store.sql.initdb.image }}
           env:
+          - name: PGUSER
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "stan.name" . }}
+                key: dbUser
           - name: PGPASSWORD
-            value: {{ .Values.store.sql.dbPassword }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "stan.name" . }}
+                key: dbPassword
           command: ['psql']
           args: [
           '--host', '{{ .Values.store.sql.dbHost }}',
-          '-U', '{{ .Values.store.sql.dbUser }}',
           '-d', '{{ .Values.store.sql.dbName }}',
           '-p', '{{ .Values.store.sql.dbPort }}',
           '-c', 'CREATE TABLE IF NOT EXISTS ServerInfo (uniquerow INTEGER DEFAULT 1, id VARCHAR(1024), proto BYTEA, version INTEGER, PRIMARY KEY (uniquerow));

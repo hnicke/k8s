@@ -1,12 +1,12 @@
 ---
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: {{ template "stan.name" . }}-config
   labels:
     app: {{ template "stan.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-data:
+stringData:
   stan.conf: |-
     http: 8222
 
@@ -29,7 +29,7 @@ data:
       store: "sql"
       sql_options {
         driver: {{ .Values.store.sql.driver }}
-        source: '{{.Values.store.sql.source}}'
+        source: {{ tpl .Values.store.sql.source . | quote }}
       }
       {{- else if eq .Values.store.type "memory" }}
       store: "memory"

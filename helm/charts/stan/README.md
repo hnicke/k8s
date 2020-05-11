@@ -22,7 +22,7 @@ Listening on [foo], clientID=[stan-sub], qgroup=[] durable=[]
 A NATS Streaming server **requires a connection to a NATS Server**, you
 can set it as follows:
 
-```
+```yaml
 stan:
   nats:
     url: "nats://my-nats:4222"
@@ -115,13 +115,14 @@ store:
   sql:
     driver: postgres
 
-    # For example:
-    # 
-    # source: "dbname=postgres user=postgres password=stan host=stan-db sslmode=disable"
-    # 
-    source: ""
+    # this value is evaluated as a template, i.e. you can reference chart values
+    # e.g.:
+    source: |
+      {{- with .Values.store.sql -}}
+      dbname={{ .dbName }} user={{ .dbUser }} password={{ .dbPassword }} host={{ .dbHost }} sslmode=disable
+      {{- end -}}
 
-    # Initialize the database
+    # Initialize the database.
     initdb:
       enabled: true
 

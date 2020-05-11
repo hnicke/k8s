@@ -22,6 +22,9 @@ spec:
 
   template:
     metadata:
+      annotations:
+        # see https://helm.sh/docs/charts_tips_and_tricks/#automatically-roll-deployments-when-configmaps-or-secrets-change
+        checksum/{{ template "stan.name" . }}-config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
       labels:
         app: {{ template "stan.name" . }}
         chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
@@ -32,8 +35,8 @@ spec:
 {{- end }}
       terminationGracePeriodSeconds: 30
       volumes:
-      - configMap:
-          name: {{ template "stan.name".  }}-config
+      - secret:
+          secretName: {{ template "stan.name".  }}-config
         name: config-volume
       affinity:
         podAntiAffinity:
@@ -52,8 +55,8 @@ spec:
         - name: stan
           image: {{ .Values.stan.image }}
           args:
-          - -sc
-          - /etc/stan-config/stan.conf
+            - --stan_config
+            - /etc/stan-config/stan.conf
           env:
           - name: POD_NAME
             valueFrom:
