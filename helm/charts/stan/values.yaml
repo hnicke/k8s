@@ -32,6 +32,9 @@ securityContext: null
 # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
 affinity: {}
 
+# Init containers as yaml declaration
+initContainers: []
+
 ###########################
 #                         #
 #  Storage configuration  #

@@ -161,7 +161,7 @@ https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 securityContext:
   fsGroup: 1000
   runAsUser: 1000
-  runAsNonRoot: true       
+  runAsNonRoot: true
 ```
 
 #### Affinity
@@ -190,4 +190,15 @@ affinity:
                 - nats
                 - stan
         topologyKey: "kubernetes.io/hostname"
+```
+
+#### Init Containers
+
+Add init containers which are executed before the stan server starts.
+
+```yaml
+initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup myservice; do echo waiting for myservice; sleep 2; done"]
 ```
