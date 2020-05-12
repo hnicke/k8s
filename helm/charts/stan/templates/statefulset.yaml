@@ -51,14 +51,86 @@ spec:
 {{- with .Values.affinity }}
 {{ toYaml . | indent 8 }}
 {{- end }}
-      {{ $initDb := and (eq .Values.store.type "sql") (eq .Values.store.sql.driver "postgres") .Values.store.sql.initdb.enabled}}
-      {{- if or .Values.initContainers $initDb }}
+      {{ $usePostgres := and (eq .Values.store.type "sql") (eq .Values.store.sql.driver "postgres") }}
+      {{- if or .Values.initContainers $usePostgres }}
       initContainers:
         {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- if $initDb }}
-      {{- if .Values.store.sql.initdb.enabled }}
+        {{- if $usePostgres }}
+        - name: wait-for-postgres
+          image: appropriate/curl
+          imagePullPolicy: IfNotPresent
+        {{- with .Values.store.sql }}
+          command:
+            - sh
+            - -c
+            - |
+              until [ $(curl {{ .dbHost }}:{{ .dbPort }} --silent; echo $?) = 52 ]; do
+                echo "Waiting for {{ .dbHost }}"
+                sleep 2
+              done
+        {{- end }}
+        {{- if .Values.store.sql.createdb.enabled }}
+        - name: create-database
+          image: {{ .Values.store.sql.createdb.image }}
+          env:
+          - name: PGUSER
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "stan.name" . }}
+                key: dbManageUser
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "stan.name" . }}
+                key: dbManagePassword
+          - name : PGHOST
+            value: {{ .Values.store.sql.dbHost | quote }}
+          - name : PGPORT
+            value: {{ .Values.store.sql.dbPort | quote }}
+          - name: PGDATABASE
+            value: {{ .Values.store.sql.createdb.defaultDatabase }} 
+          - name: SERVICE_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "stan.name" . }}
+                key: dbPassword
+          - name: SERVICE_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "stan.name" . }}
+                key: dbUser
+          {{ with .Values.store.sql }}
+          command:
+            - sh
+            - -c
+            - |
+              roleExists() {
+                  psql -tc "SELECT 1 FROM pg_roles where rolname='${1:?Which role?}'" | grep -qw 1
+              }
+              dbExists() {
+                psql -ltq | cut -d" " -f2 | grep -qw "${1:?Which db?}"
+              }
+
+              user=${SERVICE_DB_USER:?}
+              password=${SERVICE_DB_PASSWORD:?}
+              if ! roleExists "$user"; then
+                  psql -c "CREATE USER $user WITH LOGIN PASSWORD '$password'" > /dev/null
+                  echo "Created database user '$user'"
+              else
+                  psql -c "ALTER USER $user WITH LOGIN PASSWORD '$password'" > /dev/null
+                  echo "Updated password for database user '$user'"
+              fi
+
+              dbName={{ .dbName }}
+              if ! dbExists "$dbName"; then
+                  psql -tc "CREATE DATABASE $dbName OWNER $SERVICE_DB_USER" > /dev/null
+                  echo "Created database '$dbName'"
+              fi
+        {{- end }}
+        {{- end }}
+        {{- if .Values.store.sql.initdb.enabled }}
         - name: init-database
           image: {{ .Values.store.sql.initdb.image }}
           env:
