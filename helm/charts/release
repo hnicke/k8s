@@ -1,0 +1,24 @@
+#!/bin/bash  
+# automates releasing new versions of this chart:
+# 1. packages chart
+# 2. updates index 
+set -e
+
+cd "$(dirname "$0")"
+
+chart=stan
+repoDir=fork-repo
+mkdir -p $repoDir
+
+version=$(grep "version: " $chart/Chart.yaml | sed 's/version://')
+
+echo "Release version $version?  "
+read -s -n1 -p "[y/N]" bumped
+[ "$bumped" = y ] || { echo -e "\nAborting"; exit 1; }
+echo 
+
+helm package --destination $repoDir $chart > /dev/null
+echo Packaged chart version $version
+helm repo index $repoDir --url https://hnicke.github.io/k8s/helm/charts/$repoDir
+echo Updated index.yaml
+
